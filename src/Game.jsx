@@ -2,18 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { drawHand } from './hand.js'
 import { createGame } from './game/engine.js'
 import CalibDemo from './CalibDemo.jsx'
-
-/** 评级按「每分钟得分」算，否则 120 秒局永远碾压 30 秒局 */
-const RANKS = [
-  { min: 2000, name: '灵巧手', en: 'DEXTEROUS' },
-  { min: 1400, name: '黄金手指', en: 'GOLD FINGERS' },
-  { min: 900, name: '白银手指', en: 'SILVER' },
-  { min: 500, name: '青铜手指', en: 'BRONZE' },
-  { min: 0, name: '新手', en: 'ROOKIE' },
-]
-
-const rateOf = (score, duration) => (duration > 0 ? (score / duration) * 60 : 0)
-const rankOf = (rate) => RANKS.find((r) => rate >= r.min) || RANKS[RANKS.length - 1]
+import Radar from './Radar.jsx'
+import {
+  buildProfile,
+  renderShareCard,
+  canvasToUrl,
+} from './scorecard.js'
 
 const DURATIONS = [30, 60, 90, 120]
 
@@ -54,6 +48,9 @@ export default function Game({ onExit }) {
   const [phase, setPhase] = useState('setup')
   const [count, setCount] = useState(3)
   const [result, setResult] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [cardUrl, setCardUrl] = useState(null)
+  const [cardBusy, setCardBusy] = useState(false)
   const [best, setBest] = useState(() => readBest(90))
 
   const [camStatus, setCamStatus] = useState('idle')
@@ -78,6 +75,8 @@ export default function Game({ onExit }) {
       onEnd: (r) => {
         setPhase('end')
         setResult(r)
+        setProfile(buildProfile(r, { duration: dur }))
+        setCardUrl(null) // 上一局的卡片不能留在这一局
         const prev = readBest(dur)
         if (r.score > prev) localStorage.setItem(bestKey(dur), String(r.score))
         setBest(Math.max(prev, r.score))
@@ -86,6 +85,7 @@ export default function Game({ onExit }) {
     game.setHandRenderer((ctx, x, y, g, t) => drawHand(ctx, { x, y, g, t, scale: 1.2 }))
     gameRef.current = game
     window.__game = game // 调试用
+    if (import.meta.env.DEV) window.__scorecard = { buildProfile, renderShareCard, canvasToUrl }
     game.render()
     return game
   }, [])
@@ -247,10 +247,27 @@ export default function Game({ onExit }) {
     setDuration(dur)
     setBest(readBest(dur))
     setResult(null)
+    setProfile(null)
+    setCardUrl(null)
     setHud({ ...EMPTY_HUD, time: dur })
     build(dur, mode)
     setPhase('count')
   }
+
+  /** 生成分享卡：画布绘制 → Blob URL → 预览 / 下载 */
+  const makeCard = useCallback(async () => {
+    if (!profile || cardBusy) return
+    setCardBusy(true)
+    try {
+      const canvas = await renderShareCard(profile)
+      setCardUrl(await canvasToUrl(canvas))
+    } finally {
+      setCardBusy(false)
+    }
+  }, [profile, cardBusy])
+
+  // 旧卡片的 Blob URL 要回收，否则连打十局内存里堆十张图
+  useEffect(() => () => void (cardUrl && URL.revokeObjectURL(cardUrl)), [cardUrl])
 
   const target = hud.target
   const bandLeft = target ? Math.max(0, target.gOpt - target.tol) * 100 : 0
@@ -414,15 +431,20 @@ export default function Game({ onExit }) {
           </div>
         )}
 
-        {phase === 'end' && result && (
+        {phase === 'end' && result && profile && (
           <div className="result-overlay">
             <div className="result-card">
-              <span className="result-rank">{rankOf(rateOf(result.score, duration)).en}</span>
+              <span className="result-rank">{profile.rank.en}</span>
               <b className="result-score">{result.score}</b>
               <span className="result-sub">
-                {rankOf(rateOf(result.score, duration)).name} · {duration}s 局 ·{' '}
-                {Math.round(rateOf(result.score, duration))} 分/分钟 · 最高 {best}
+                {profile.rank.name} · {duration}s 局 · {Math.round(profile.perMinute)} 分/分钟 ·
+                最高 {best}
               </span>
+
+              <Radar dims={profile.dims} size={172} />
+
+              <span className="result-title">{profile.title.name}</span>
+              <span className="result-tagline">{profile.tagline}</span>
 
               <div className="result-grid">
                 <div>
@@ -444,13 +466,20 @@ export default function Game({ onExit }) {
               </div>
 
               <div className="result-actions">
-                <button className="btn btn--primary" onClick={() => startGame()}>
+                <button
+                  className="btn btn--primary"
+                  onClick={makeCard}
+                  disabled={cardBusy}
+                >
+                  {cardBusy ? '正在生成…' : '生成分享卡'}
+                </button>
+                <button className="btn btn--ghost" onClick={() => startGame()}>
                   再来一局
                 </button>
-                <button className="btn btn--ghost" onClick={() => setPhase('setup')}>
-                  换设置
-                </button>
               </div>
+              <button className="result-link" onClick={() => setPhase('setup')}>
+                换设置
+              </button>
             </div>
           </div>
         )}
@@ -483,6 +512,27 @@ export default function Game({ onExit }) {
           </div>
         )}
       </div>
+
+      {cardUrl && profile && (
+        <div className="card-preview" onClick={() => setCardUrl(null)}>
+          <div className="card-preview-inner" onClick={(e) => e.stopPropagation()}>
+            <img src={cardUrl} alt={`${profile.title.name} 成绩卡`} />
+            <div className="card-preview-actions">
+              <a
+                className="btn btn--primary"
+                href={cardUrl}
+                download={`dexkinetics-${result?.score ?? 0}.png`}
+              >
+                保存图片
+              </a>
+              <button className="btn btn--ghost" onClick={() => setCardUrl(null)}>
+                关闭
+              </button>
+            </div>
+            <p className="card-preview-hint">手机上长按图片，也能直接存进相册</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@
  * 抓取挑战 · 游戏内核
  * 纯逻辑 + Canvas 渲染，不依赖 React。React 只负责挂载、输入和 HUD。
  *
- * 坐标系：逻辑舞台 560 × 720，等比缩放到画布。
+ * 坐标系：逻辑舞台 560 × 620，等比缩放到画布。
  * 约定：g = 1 完全张开，g = 0 完全合拢。
  */
 
@@ -104,6 +104,7 @@ export function createGame({
     thumb: 0.5,
     gHist: [],
     prevG: 1,
+    prevJudge: 1,
     dgdt: 0,
     shake: 0,
     hand: null, // 掌心在舞台坐标系里的位置（摄像头模式）
@@ -111,6 +112,16 @@ export function createGame({
     handSeenAt: 0,
     gripX: GRIP.x,
     gripY: GRIP.y,
+    // ---- 四维风格统计（结算成绩卡用）----
+    // 只做累积，不做判断；归一化和称号在 scorecard.js 里算
+    stat: {
+      closePeak: 0, // 本次接近过程中最大闭合速度（g/s，取正值）
+      powerSamples: [], // 每次抓取 / 捏碎时的闭合速度
+      nerveSamples: [], // 每次接触易碎物时的闭合速度 ÷ 该物体危险阈值
+      gapSamples: [], // 每次抓取的 |Δg| ÷ tol（0 完美，1 勉强）
+      fragSeen: 0, // 易碎物进抓取区的次数
+      fragBroken: 0, // 其中被捏碎的次数
+    },
   }
 
   // ---------- 自适应尺寸 ----------
@@ -217,6 +228,13 @@ export function createGame({
     if (s.gHist.length > 3) s.gHist.shift()
     const gJudge = camMode ? s.gHist.reduce((a, b) => a + b, 0) / s.gHist.length : eg
 
+    // 闭合速度峰值：dgdt < 0 才是"在合拢"。抓取瞬间读数已经稳住了，
+    // 所以要看的是"接近过程中最猛的那一下"，而不是判定时刻的瞬时值。
+    // 统计用 3 帧均值求导，否则摄像头模式的手抖会被记成"很用力"。
+    const dj = dt > 0 ? (gJudge - s.prevJudge) / dt : 0
+    s.prevJudge = gJudge
+    if (dj < 0) s.stat.closePeak = Math.max(s.stat.closePeak, -dj)
+
     // 生成
     const p = Math.min(1, s.t / s.duration)
     s.spawnTimer -= dt
@@ -236,7 +254,12 @@ export function createGame({
       if (inZone && aligned) {
         if (!o.touched) {
           o.touched = true
-          // 易碎物：闭合太猛，第一次接触就碎
+          // 易碎物：记录"敢不敢下手"——接触时的接近速度离危险阈值有多近
+          if (o.def.fragile) {
+            s.stat.fragSeen += 1
+            s.stat.nerveSamples.push(clamp(s.stat.closePeak / o.def.fragile, 0, 1.5))
+          }
+          // 闭合太猛，第一次接触就碎
           if (o.def.fragile && Math.abs(s.dgdt) > o.def.fragile) {
             breakObject(o)
             continue
@@ -259,6 +282,7 @@ export function createGame({
         o.state = 'missed'
         s.misses += 1
         s.combo = 0
+        s.stat.closePeak = 0 // 这一轮的接近过程结束了，别污染下一个
         s.shake = 14
         s.effects.push({ kind: 'miss', x: o.x, y: H - 30, t: 0 })
         if (s.misses >= 3) {
@@ -290,6 +314,10 @@ export function createGame({
     s.combo += 1
     s.maxCombo = Math.max(s.maxCombo, s.combo)
 
+    s.stat.powerSamples.push(s.stat.closePeak)
+    s.stat.gapSamples.push(clamp(diff / o.tol, 0, 1))
+    s.stat.closePeak = 0
+
     const precision = 1 + (1 - diff / o.tol) * 0.5
     const comboMul = Math.min(3, 1 + Math.min(s.combo, 20) * 0.1)
     const perfect = diff <= o.tol * 0.25
@@ -315,6 +343,10 @@ export function createGame({
     s.combo = 0
     s.misses += 1
     s.shake = 20
+    // 捏碎了也算一次"下手很猛"的样本——力度就是这个意思
+    s.stat.powerSamples.push(s.stat.closePeak)
+    if (o.def.fragile) s.stat.fragBroken += 1
+    s.stat.closePeak = 0
     s.effects.push({ kind: 'break', x: o.x, y: o.y, t: 0, d: o.d })
     if (s.misses >= 3) finish()
   }
@@ -798,6 +830,17 @@ export function createGame({
       misses: s.misses,
       time: Math.min(s.duration, s.t),
       rate: s.caught / Math.max(1, s.caught + s.misses),
+      mode: camMode ? 'camera' : 'slider',
+      // 原始样本，交给 scorecard.js 归一化；这里不做任何解释
+      stats: {
+        power: s.stat.powerSamples.slice(),
+        nerve: s.stat.nerveSamples.slice(),
+        gaps: s.stat.gapSamples.slice(),
+        fragSeen: s.stat.fragSeen,
+        fragBroken: s.stat.fragBroken,
+        maxCombo: s.maxCombo,
+        camMode,
+      },
     })
   }
 
