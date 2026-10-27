@@ -23,6 +23,14 @@ const EMPTY_HUD = {
 }
 
 const bestKey = (d) => `grasp.best.${d}`
+const MUTE_KEY = 'dex.muted'
+const readMuted = () => {
+  try {
+    return localStorage.getItem(MUTE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 const readBest = (d) => Number(localStorage.getItem(bestKey(d)) || 0)
 
 const CAM_TIPS = {
@@ -52,6 +60,7 @@ export default function Game({ onExit }) {
   const [cardUrl, setCardUrl] = useState(null)
   const [cardBusy, setCardBusy] = useState(false)
   const [best, setBest] = useState(() => readBest(90))
+  const [muted, setMuted] = useState(readMuted)
 
   const [camStatus, setCamStatus] = useState('idle')
   const [detected, setDetected] = useState(false)
@@ -82,6 +91,8 @@ export default function Game({ onExit }) {
         setBest(Math.max(prev, r.score))
       },
     })
+    game.setMuted(readMuted())
+    game.setMuted(readMuted())
     game.setHandRenderer((ctx, x, y, g, t) => drawHand(ctx, { x, y, g, t, scale: 1.2 }))
     gameRef.current = game
     window.__game = game // 调试用
@@ -251,6 +262,8 @@ export default function Game({ onExit }) {
     setCardUrl(null)
     setHud({ ...EMPTY_HUD, time: dur })
     build(dur, mode)
+    // 音效必须在用户点击的调用栈里解锁，否则浏览器不让出声
+    gameRef.current?.unlockAudio()
     setPhase('count')
   }
 
@@ -295,6 +308,23 @@ export default function Game({ onExit }) {
           {hud.combo > 1 && <span className="hud-combo">×{hud.combo}</span>}
           <span className={'hud-time' + (timeLow ? ' is-low' : '')}>{Math.ceil(hud.time)}s</span>
         </div>
+        <button
+          className={'hud-sound' + (muted ? ' is-off' : '')}
+          onClick={() => {
+            const v = !muted
+            setMuted(v)
+            try {
+              localStorage.setItem(MUTE_KEY, v ? '1' : '0')
+            } catch {
+              /* 忽略 */
+            }
+            gameRef.current?.setMuted(v)
+          }}
+          aria-label={muted ? '开启音效' : '关闭音效'}
+        >
+          {muted ? '静音' : '音效'}
+        </button>
+
         <div className="hud-lives" aria-label={'失误 ' + hud.misses}>
           {[0, 1, 2].map((i) => (
             <i key={i} className={i < 3 - hud.misses ? 'life' : 'life off'} />

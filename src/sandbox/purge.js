@@ -9,7 +9,7 @@
  *   - 松手时把手的速度甩给附近的球（对应原型的 "pinch and release to throw"）
  */
 
-import { createSfx } from './sfx.js'
+import { createSfx } from '../sfx.js'
 
 const TAU = Math.PI * 2
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))

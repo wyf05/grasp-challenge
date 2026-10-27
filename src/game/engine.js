@@ -6,6 +6,8 @@
  * 约定：g = 1 完全张开，g = 0 完全合拢。
  */
 
+import { createSfx } from '../sfx.js'
+
 const W = 560
 const H = 620
 
@@ -82,6 +84,7 @@ export function createGame({
   const tolMul = camMode ? 1.8 : 1
   const holdMs = camMode ? 100 : HOLD_MS
   const ctx = canvas.getContext('2d')
+  const sfx = createSfx()
 
   let raf = null
   let last = 0
@@ -99,6 +102,7 @@ export function createGame({
     misses: 0,
     objects: [],
     effects: [],
+    sparks: [],
     spawnTimer: 1.1,
     g: 1,
     thumb: 0.5,
@@ -284,6 +288,7 @@ export function createGame({
         s.combo = 0
         s.stat.closePeak = 0 // 这一轮的接近过程结束了，别污染下一个
         s.shake = 14
+        sfx.drop()
         s.effects.push({ kind: 'miss', x: o.x, y: H - 30, t: 0 })
         if (s.misses >= 3) {
           finish()
@@ -291,6 +296,16 @@ export function createGame({
         }
       }
     }
+
+    // 火花
+    for (const sp of s.sparks) {
+      sp.life += dt
+      sp.x += sp.vx * dt
+      sp.y += sp.vy * dt
+      sp.vy += 620 * dt
+      sp.vx *= Math.pow(0.15, dt)
+    }
+    s.sparks = s.sparks.filter((sp) => sp.life < sp.ttl)
 
     // 效果衰减
     for (const e of s.effects) e.t += dt
@@ -304,6 +319,24 @@ export function createGame({
     s.objects = s.objects.filter((o) => o.state === 'falling' || o.gone < 0.32)
 
     pushHud()
+  }
+
+  /** 抓中/碎裂时撒一把小点。黑白语言里成功只用墨色，失败才用红 */
+  function spawnSparks(x, y, n, strong, color) {
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4
+      const sp = 80 + Math.random() * (strong ? 260 : 190)
+      s.sparks.push({
+        x,
+        y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0,
+        ttl: 0.22 + Math.random() * 0.32,
+        r: (strong ? 2.0 : 1.5) + Math.random() * 1.9,
+        color,
+      })
+    }
   }
 
   function catchObject(o, diff) {
@@ -328,6 +361,9 @@ export function createGame({
     }
     s.score = Math.round(s.score + gain)
 
+    sfx.grab(s.combo, perfect)
+    spawnSparks(o.x, GRIP.y, perfect ? 22 : 13, perfect, '#0A0A0A')
+
     s.effects.push({
       kind: perfect ? 'perfect' : 'catch',
       x: o.x,
@@ -347,6 +383,8 @@ export function createGame({
     s.stat.powerSamples.push(s.stat.closePeak)
     if (o.def.fragile) s.stat.fragBroken += 1
     s.stat.closePeak = 0
+    sfx.crack()
+    spawnSparks(o.x, o.y, 18, true, '#E5484D')
     s.effects.push({ kind: 'break', x: o.x, y: o.y, t: 0, d: o.d })
     if (s.misses >= 3) finish()
   }
@@ -717,6 +755,28 @@ export function createGame({
     // 效果
     for (const e of s.effects) drawEffect(e)
 
+    // 火花画在特效之后：抓中撒墨点，捏碎撒红点
+    for (const sp of s.sparks) {
+      const k = 1 - sp.life / sp.ttl
+      ctx.globalAlpha = Math.max(0, k)
+      ctx.fillStyle = sp.color
+      ctx.beginPath()
+      ctx.arc(sp.x, sp.y, sp.r * (0.4 + k * 0.85), 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+
+    // 火花画在特效之后：抓中撒墨点，捏碎撒红点
+    for (const sp of s.sparks) {
+      const k = 1 - sp.life / sp.ttl
+      ctx.globalAlpha = Math.max(0, k)
+      ctx.fillStyle = sp.color
+      ctx.beginPath()
+      ctx.arc(sp.x, sp.y, sp.r * (0.4 + k * 0.85), 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+
     ctx.restore()
   }
 
@@ -870,6 +930,15 @@ export function createGame({
       draw()
     },
     getState: () => s,
+    unlockAudio() {
+      sfx.ensure()
+    },
+    setMuted(v) {
+      sfx.setMuted(v)
+    },
+    setMuted(v) {
+      sfx.setMuted(v)
+    },
     finish,
     GRIP,
     W,

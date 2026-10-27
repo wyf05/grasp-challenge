@@ -2552,3 +2552,49 @@ button {
   opacity: 0;
   pointer-events: none;
 }
+
+/* 音效开关：放在生命点前面，小胶囊 */
+.hud-sound {
+  padding: 4px 9px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hud-sound.is-off {
+  color: rgba(0, 0, 0, 0.3);
+  border-style: dashed;
+}
+
+.hud-sound:hover {
+  color: #0a0a0a;
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+/* 音效开关：放在生命点前面，小胶囊 */
+.hud-sound {
+  padding: 4px 9px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hud-sound.is-off {
+  color: rgba(0, 0, 0, 0.3);
+  border-style: dashed;
+}
+
+.hud-sound:hover {
+  color: #0a0a0a;
+  border-color: rgba(0, 0, 0, 0.3);
+}
