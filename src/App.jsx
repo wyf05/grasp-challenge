@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
-import { Plus } from 'lucide-react'
 import HandLab from './HandLab.jsx'
 import Game from './Game.jsx'
 import GestureLab from './GestureLab.jsx'
 import Sandbox from './Sandbox.jsx'
+import Guide, { shouldAutoShowGuide } from './Guide.jsx'
 
 const EASE = [0.16, 1, 0.3, 1]
 
@@ -48,21 +48,48 @@ function LogoMark() {
   )
 }
 
-function GridMark() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
-      <circle cx="2.6" cy="2.6" r="1.35" fill="currentColor" />
-      <circle cx="7.4" cy="2.6" r="1.35" fill="currentColor" />
-      <circle cx="2.6" cy="7.4" r="1.35" fill="currentColor" />
-      <circle cx="7.4" cy="7.4" r="1.35" fill="currentColor" />
-    </svg>
-  )
+/** 三个玩法入口：先说"是什么"，再说"要不要摄像头"，最后才是细节 */
+const ENTRIES = [
+  {
+    no: '01',
+    href: '#play',
+    name: '抓取挑战',
+    en: 'Grasp Challenge',
+    desc: '90 秒，物体从上方落下。把开口调到刚好夹住，停在抓取区里夹稳。鸡蛋和玻璃杯经不起猛合。',
+    tags: ['滑轨 / 手势', '有成绩卡'],
+    primary: true,
+  },
+  {
+    no: '02',
+    href: '#gesture',
+    name: '手势实验室',
+    en: 'Gesture Lab',
+    desc: '摄像头把手上 21 个关节点画在屏幕上，五指伸直度、开合度实时读数。五个手势做对就点亮。',
+    tags: ['需要摄像头'],
+  },
+  {
+    no: '03',
+    href: '#sandbox',
+    name: '摄像头沙盒',
+    en: 'Camera Sandbox',
+    desc: '两个玩法：捏合指尖能捏爆气球发泄一下；或者张开手，让花在掌心一点点开出来。',
+    tags: ['需要摄像头', '捏气球 / 指尖生花'],
+  },
+]
+
+const go = (href) => {
+  location.hash = href
 }
 
 export default function App() {
   const hash = useHash()
+  const [guide, setGuide] = useState(false)
 
-  // 开发期调参入口：/#lab
+  // 第一次来先讲清楚这是什么，之后不再自动弹
+  useEffect(() => {
+    if (hash === '' || hash === '#') setGuide(shouldAutoShowGuide())
+  }, [hash])
+
   if (hash === '#lab') return <HandLab />
 
   if (hash === '#gesture') {
@@ -78,135 +105,114 @@ export default function App() {
   }
 
   return (
-    <main className="page">
-      {/* 背景视频 */}
-      <div className="video-frame" aria-hidden="true">
-        <motion.div
-          className="video-wrap"
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.8, ease: EASE }}
-        >
-          <video className="video" src={VIDEO_SRC} autoPlay muted playsInline loop />
-        </motion.div>
-      </div>
-
-      {/* 顶部导航 */}
-      <motion.nav
-        className="nav"
-        initial={{ y: -16, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: EASE }}
-      >
-        <div className="nav-left">
-          <div className="brand">
-            <LogoMark />
-            <span className="brand-name">DexKinetics</span>
-          </div>
-
-          <button type="button" className="pill pill--solid">
-            <span className="pill-circle">
-              <Plus size={12} strokeWidth={3} />
-            </span>
-            <span className="pill-solid-label">Menu</span>
-          </button>
-
-          <div className="tag-pill">
-            <span>Dexterous Grasping</span>
-            <span>Force Control</span>
-          </div>
-        </div>
-
-        <div className="nav-right">
-          <button type="button" className="pill pill--soft">
-            <span className="pill-circle pill-circle--dark">
-              <GridMark />
-            </span>
-            <span className="pill-soft-label">Adaptive Grip</span>
-          </button>
-        </div>
-      </motion.nav>
-
-      {/* 底部内容 */}
-      <motion.footer
-        className="footer"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.5, duration: 1, ease: EASE }}
-      >
-        <div className="footer-left">
+    <>
+      <main className="page">
+        <div className="video-frame" aria-hidden="true">
           <motion.div
-            className="subtitle"
-            initial={{ y: 16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.8, ease: EASE }}
+            className="video-wrap"
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.8, ease: EASE }}
           >
-            <span className="dot" />
-            <span>90-Second Dexterous Challenge · 2026</span>
+            <video className="video" src={VIDEO_SRC} autoPlay muted playsInline loop />
           </motion.div>
-
-          <motion.h1
-            className="heading"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.8, ease: EASE }}
-          >
-            Grip It Tight.
-            <br />
-            Or Watch It Fall.
-          </motion.h1>
-
-          <motion.div
-            className="buttons"
-            initial={{ y: 16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 1, duration: 0.8, ease: EASE }}
-          >
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => {
-                location.hash = '#play'
-              }}
-            >
-              Start Challenge
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => {
-                location.hash = '#gesture'
-              }}
-            >
-              How It Works
-            </button>
-          </motion.div>
-
-          <motion.button
-            type="button"
-            className="link-btn"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.15, duration: 0.6, ease: EASE }}
-            onClick={() => {
-              location.hash = '#sandbox'
-            }}
-          >
-            摄像头沙盒：捏气球 / 指尖生花 ↗
-          </motion.button>
         </div>
 
-        <motion.div
-          className="footer-right"
-          initial={{ y: 16, opacity: 0 }}
+        <motion.nav
+          className="nav"
+          initial={{ y: -16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 1.1, duration: 0.8, ease: EASE }}
+          transition={{ duration: 0.8, ease: EASE }}
         >
-          <span className="chip">Dexterous</span>
-          <span className="chip">Tactile</span>
-          <span className="chip">Precision</span>
-        </motion.div>
-      </motion.footer>
-    </main>
+          <div className="nav-left">
+            <div className="brand">
+              <LogoMark />
+              <span className="brand-name">DexKinetics</span>
+            </div>
+            <span className="brand-sub">灵巧手 · 隔空交互</span>
+          </div>
+
+          <div className="nav-right">
+            <button type="button" className="nav-link" onClick={() => setGuide(true)}>
+              怎么玩
+            </button>
+          </div>
+        </motion.nav>
+
+        <motion.footer
+          className="footer footer--home"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4, duration: 1, ease: EASE }}
+        >
+          <div className="footer-left">
+            <motion.div
+              className="subtitle"
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.8, ease: EASE }}
+            >
+              <span className="dot" />
+              <span>90 秒灵巧手挑战 · 2026</span>
+            </motion.div>
+
+            <motion.h1
+              className="heading"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.8, ease: EASE }}
+            >
+              Grip It Tight.
+              <br />
+              Or Watch It Fall.
+            </motion.h1>
+
+            <motion.p
+              className="heading-cn"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.8, ease: EASE }}
+            >
+              握紧，或者看着它掉下去。三件用手玩的小事，选一个开始。
+            </motion.p>
+          </div>
+
+          <div className="entries">
+            {ENTRIES.map((e, i) => (
+              <motion.button
+                key={e.href}
+                type="button"
+                className={'entry' + (e.primary ? ' entry--primary' : '')}
+                onClick={() => go(e.href)}
+                initial={{ y: 18, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.85 + i * 0.08, duration: 0.7, ease: EASE }}
+              >
+                <span className="entry-head">
+                  <span className="entry-no">{e.no}</span>
+                  <span className="entry-name">{e.name}</span>
+                  <span className="entry-arrow">↗</span>
+                </span>
+                <span className="entry-en">{e.en}</span>
+                <span className="entry-desc">{e.desc}</span>
+                <span className="entry-tags">
+                  {e.tags.map((t) => (
+                    <span key={t} className="entry-tag">
+                      {t}
+                    </span>
+                  ))}
+                </span>
+              </motion.button>
+            ))}
+          </div>
+
+          <p className="home-note">
+            全部在浏览器本地运行，摄像头画面不会上传。没开摄像头也能玩抓取挑战（用滑轨）。
+          </p>
+        </motion.footer>
+      </main>
+
+      <Guide open={guide} onClose={() => setGuide(false)} />
+    </>
   )
 }

@@ -46,7 +46,8 @@
 
 | 文件 | 职责 | 关键点 |
 |---|---|---|
-| `src/App.jsx` | 路由 + 首页 Hero | 首页按钮：Start Challenge → `#play`，How It Works → `#gesture` |
+| `src/App.jsx` | 路由 + 首页 | 首页是三张入口卡片（抓取挑战 / 手势实验室 / 摄像头沙盒），点卡片跳对应 hash |
+| `src/Guide.jsx` | 首次玩法说明 | 全屏浮层讲三个玩法；`localStorage['dex.guide.v1'] = 'off'` 后不再自动弹，导航"怎么玩"可随时重开 |
 | `src/game/engine.js` | **游戏内核**（纯 JS + Canvas，不含 React） | 舞台 560×620；物体生成/下落/判定/计分/特效；`mode='slider'｜'camera'` |
 | `src/game/camera.js` | MediaPipe 封装 | 懒加载引擎、两阶段校准、One Euro 滤波、fps/单帧耗时、可选 overlay |
 | `src/Game.jsx` | 游戏页 UI | HUD、滑轨/拇指控制、时长选择、结算、摄像头模式与校准引导 |
@@ -62,6 +63,12 @@
 | `src/styles.css` | 全部样式 | 极简黑白，胶囊组件，tabular-nums；**末尾是沙盒的彩色分区** |
 | `public/mp/` | MediaPipe wasm（39MB，三档） | **发布前必须裁剪成单档 SIMD** |
 | `public/models/hand_landmarker.task` | 手部模型（7.5MB） | 本地加载，不依赖 Google CDN |
+
+### 首页与引导（2026-10-27 晚重做）
+- 原来导航上的 `Menu` 和 `Adaptive Grip` 是**空按钮**（点了没反应），已删除；未使用的 `.pill` / `.chip` / `.buttons` / `.footer-right` 样式还留在 CSS 里，没清。
+- 入口改成三张卡：卡 01 黑底（主推抓取挑战），02/03 白底。卡上写明"要不要摄像头"和一句话玩法。
+- 首次进入弹 `Guide.jsx`，讲清三个玩法；每个玩法内部还有各自的说明：游戏是 setup 浮层、捏气球是 ready 浮层、花朵是 `bloom-intro`（`localStorage['dex.bloom.v1']`）。
+- `.footer--home` 必须强制 `flex-direction: column`：桌面端 `.footer` 默认是横排，不覆盖会把标题挤成五行的窄条。
 
 ## 4. 关键参数（改手感先看这里）
 

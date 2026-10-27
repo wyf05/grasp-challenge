@@ -1824,3 +1824,671 @@ button {
     display: none;
   }
 }
+
+/* ================= 首页：入口卡片 + 玩法说明 ================= */
+
+.brand-sub {
+  display: none;
+  padding-left: 10px;
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.42);
+  white-space: nowrap;
+}
+
+.nav-link {
+  padding: 9px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: border-color 0.24s ease, background-color 0.24s ease;
+}
+
+.nav-link:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+}
+
+.heading-cn {
+  margin: 14px 0 0;
+  max-width: 34ch;
+  font-size: 13px;
+  line-height: 1.75;
+  color: rgba(0, 0, 0, 0.52);
+}
+
+.footer--home {
+  gap: 18px;
+}
+
+.entries {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 16px 18px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  text-align: left;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.entry:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.32);
+}
+
+.entry:active {
+  transform: translateY(0) scale(0.997);
+}
+
+.entry--primary {
+  border-color: #0a0a0a;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+.entry--primary:hover {
+  background: #1c1c1c;
+}
+
+.entry--primary .entry-en,
+.entry--primary .entry-desc,
+.entry--primary .entry-no {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.entry--primary .entry-tag {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.entry-no {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(0, 0, 0, 0.38);
+  font-variant-numeric: tabular-nums;
+}
+
+.entry-name {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.entry-arrow {
+  margin-left: auto;
+  font-size: 13px;
+  opacity: 0.45;
+}
+
+.entry-en {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.42);
+}
+
+.entry-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.56);
+}
+
+.entry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.entry-tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.home-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.38);
+}
+
+@media (min-width: 768px) {
+  .brand-name {
+    display: block;
+  }
+  .brand-sub {
+    display: block;
+  }
+  .entries {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .entry {
+    padding: 20px 20px 18px;
+  }
+  .entry-name {
+    font-size: 18px;
+  }
+}
+
+/* ---------- 玩法说明浮层 ---------- */
+
+.guide {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.guide-card {
+  width: 100%;
+  max-width: 460px;
+  margin: auto 0;
+  padding: 26px 24px 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.14);
+}
+
+.guide-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.guide-title {
+  margin: 8px 0 6px;
+  font-size: 23px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.guide-lead {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.guide-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0 16px;
+}
+
+.guide-row {
+  display: flex;
+  gap: 12px;
+}
+
+.guide-no {
+  flex: none;
+  width: 20px;
+  padding-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.32);
+  font-variant-numeric: tabular-nums;
+}
+
+.guide-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guide-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.guide-how {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.58);
+}
+
+.guide-note {
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.42);
+}
+
+.guide-foot {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.guide-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.guide-check input {
+  width: 13px;
+  height: 13px;
+  accent-color: #0a0a0a;
+}
+
+/* ================= 首页：入口卡片 + 玩法说明 ================= */
+
+.brand-sub {
+  display: none;
+  padding-left: 10px;
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.42);
+  white-space: nowrap;
+}
+
+.nav-link {
+  padding: 9px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: border-color 0.24s ease, background-color 0.24s ease;
+}
+
+.nav-link:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+}
+
+.heading-cn {
+  margin: 14px 0 0;
+  max-width: 34ch;
+  font-size: 13px;
+  line-height: 1.75;
+  color: rgba(0, 0, 0, 0.52);
+}
+
+.footer--home {
+  gap: 18px;
+}
+
+.entries {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 16px 18px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  text-align: left;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.entry:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.32);
+}
+
+.entry:active {
+  transform: translateY(0) scale(0.997);
+}
+
+.entry--primary {
+  border-color: #0a0a0a;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+.entry--primary:hover {
+  background: #1c1c1c;
+}
+
+.entry--primary .entry-en,
+.entry--primary .entry-desc,
+.entry--primary .entry-no {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.entry--primary .entry-tag {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.entry-no {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(0, 0, 0, 0.38);
+  font-variant-numeric: tabular-nums;
+}
+
+.entry-name {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.entry-arrow {
+  margin-left: auto;
+  font-size: 13px;
+  opacity: 0.45;
+}
+
+.entry-en {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.42);
+}
+
+.entry-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.56);
+}
+
+.entry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.entry-tag {
+  padding: 4px 9px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.home-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.38);
+}
+
+@media (min-width: 768px) {
+  .brand-name {
+    display: block;
+  }
+  .brand-sub {
+    display: block;
+  }
+  .entries {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .entry {
+    padding: 20px 20px 18px;
+  }
+  .entry-name {
+    font-size: 18px;
+  }
+}
+
+/* ---------- 玩法说明浮层 ---------- */
+
+.guide {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.guide-card {
+  width: 100%;
+  max-width: 460px;
+  margin: auto 0;
+  padding: 26px 24px 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.14);
+}
+
+.guide-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.guide-title {
+  margin: 8px 0 6px;
+  font-size: 23px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.guide-lead {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.guide-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0 16px;
+}
+
+.guide-row {
+  display: flex;
+  gap: 12px;
+}
+
+.guide-no {
+  flex: none;
+  width: 20px;
+  padding-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.32);
+  font-variant-numeric: tabular-nums;
+}
+
+.guide-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guide-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.guide-how {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.58);
+}
+
+.guide-note {
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.42);
+}
+
+.guide-foot {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.guide-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.guide-check input {
+  width: 13px;
+  height: 13px;
+  accent-color: #0a0a0a;
+}
+
+/* 卡片原本是半透明玻璃，背后那只黑手会透上来显得很脏，改成实底（见下方 :not 规则） */
+.footer--home {
+  background: linear-gradient(
+    to top,
+    #ffffff 0%,
+    #ffffff 52%,
+    rgba(255, 255, 255, 0.94) 72%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+@media (min-width: 768px) {
+  .footer--home {
+    padding-top: 96px;
+  }
+}
+
+/* 上面那条 .entry 覆盖范围太大，把主卡片也刷成白底白字了 —— 收窄到非主卡片 */
+.entry:not(.entry--primary) {
+  background: #ffffff;
+}
+
+/* 桌面端 .footer 默认是横排，首页要塞下"标题 + 三张卡"，必须强制竖排 */
+.footer--home {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.footer--home .footer-left {
+  max-width: 760px;
+}
+
+.bloom-intro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.bloom-intro .sandbox-card {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bloom-intro .sandbox-sub {
+  margin: -4px 0 6px;
+  line-height: 1.6;
+}
+
+.bloom-intro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.bloom-intro .sandbox-card {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bloom-intro .sandbox-sub {
+  margin: -4px 0 6px;
+  line-height: 1.6;
+}

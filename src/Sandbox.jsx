@@ -29,6 +29,23 @@ export default function Sandbox({ onExit }) {
   const [hud, setHud] = useState({ time: 60, score: 0, active: 0, combo: 0 })
   const [bhud, setBhud] = useState({ bloom: 0, index: 0 })
   const [flowerReady, setFlowerReady] = useState(false)
+  // 指尖生花第一次进来要讲一句怎么玩（捏气球那边有 ready 浮层，这边没有）
+  const [bloomIntro, setBloomIntro] = useState(() => {
+    try {
+      return localStorage.getItem('dex.bloom.v1') !== 'off'
+    } catch {
+      return true
+    }
+  })
+
+  const closeBloomIntro = () => {
+    try {
+      localStorage.setItem('dex.bloom.v1', 'off')
+    } catch {
+      /* 隐私模式下写不了 localStorage，忽略 */
+    }
+    setBloomIntro(false)
+  }
 
   const purgeCanvas = useRef(null)
   const bloomCanvas = useRef(null)
@@ -337,6 +354,26 @@ export default function Sandbox({ onExit }) {
               onPointerLeave={(e) => setPointer(e, false)}
             />
             {!flowerReady && <div className="bloom-loading">正在展开花瓣…</div>}
+
+            {bloomIntro && (
+              <div className="bloom-intro">
+                <div className="sandbox-card">
+                  <span className="sandbox-eyebrow">Bloom</span>
+                  <h2>张开手，花就开。</h2>
+                  <p>
+                    手张开多少，花就开到多少；握拳，它收成花苞。开满停一会儿，会换下一朵。
+                  </p>
+                  <p className="sandbox-sub">
+                    {camStatus === 'ready'
+                      ? '把整只手放进画面，离镜头 40–60cm。'
+                      : '没开摄像头也行：在画面上左右拖动。'}
+                  </p>
+                  <button className="btn btn--primary" onClick={closeBloomIntro}>
+                    试试
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bloom-foot">
