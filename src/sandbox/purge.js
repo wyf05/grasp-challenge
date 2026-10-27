@@ -9,6 +9,8 @@
  *   - 松手时把手的速度甩给附近的球（对应原型的 "pinch and release to throw"）
  */
 
+import { createSfx } from './sfx.js'
+
 const TAU = Math.PI * 2
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 const lerp = (a, b, k) => a + (b - a) * k
@@ -27,6 +29,7 @@ const TIPS = [4, 8, 12, 16, 20]
 
 export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
   const ctx = canvas.getContext('2d')
+  const sfx = createSfx()
   let raf = null
   let last = 0
   let running = false
@@ -40,6 +43,8 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     popped: 0,
     balloons: [],
     particles: [],
+    shards: [],
+    flashes: [],
     ripples: [],
     hands: [],
     pan: { x: 0, y: 0, vx: 0, vy: 0 },
@@ -129,7 +134,37 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     s.score += gain
     s.shake = 6 + Math.max(0, 1.9 - b.z) * 7
 
-    const n = 22
+    const depth = clamp((1.9 - b.z) / 1.35, 0, 1)
+    sfx.pop(depth, s.combo)
+
+    // 撕碎的橡胶碎片：不规则多边形 + 自转 + 重力（参考里爆开是一把碎片，不是均匀粒子）
+    const NS = 14
+    for (let i = 0; i < NS; i++) {
+      const a = (i / NS) * TAU + rand(-0.35, 0.35)
+      const sp = rand(60, 230) * (0.6 + depth * 0.8)
+      const k = 3 + ((Math.random() * 3) | 0)
+      const pts = []
+      for (let j = 0; j < k; j++) {
+        const ang = (j / k) * TAU + rand(-0.2, 0.2)
+        const rr = rand(0.45, 1)
+        pts.push([Math.cos(ang) * rr, Math.sin(ang) * rr])
+      }
+      s.shards.push({
+        x: p.x,
+        y: p.y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 70,
+        rot: rand(0, TAU),
+        vr: rand(-9, 9),
+        size: rand(8, 19) * (0.7 + depth * 0.6),
+        hue: b.hue + rand(-10, 10),
+        life: 0,
+        ttl: rand(0.42, 0.7),
+        pts,
+      })
+    }
+
+    const n = 14
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU + rand(-0.2, 0.2)
       const sp = rand(120, 420) * (0.7 + Math.max(0, 1.9 - b.z) * 0.45)
@@ -144,7 +179,7 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
         hue: b.hue,
       })
     }
-    s.ripples.push({ x: p.x, y: p.y, r: p.r * 0.5, life: 0, ttl: 0.42, hue: b.hue })
+    s.flashes.push({ x: p.x, y: p.y, r: p.r, life: 0, ttl: 0.16, hue: b.hue })
     s.balloons = s.balloons.filter((x) => x !== b)
   }
 
@@ -164,6 +199,12 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     if (tip) {
       if (pinch && !s.pinching) {
         s.grabAt = { ...tip, t: s.t }
+        // 捏空的瞬间若能碰到球，给一记很轻的"橡皮被捏"闷响
+        const near = s.balloons.some((b) => {
+          const q = project(b)
+          return Math.hypot(tip.x - q.x, tip.y - q.y) < q.r * 1.6
+        })
+        if (near) sfx.squish()
       }
 
       if (pinch) {
@@ -209,6 +250,26 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     }
     s.pinching = pinch
 
+    // 挤压：捏合且指尖靠近某个球时，球沿"指尖→球心"方向被压扁
+    for (const b of s.balloons) {
+      const p = project(b)
+      const d = tip ? Math.hypot(tip.x - p.x, tip.y - p.y) : 1e9
+      const near = clamp(1 - d / (p.r * 2.4), 0, 1)
+      const want = pinch && d < p.r * 1.9 ? near : 0
+      b.sq = lerp(b.sq || 0, want, 1 - Math.exp(-16 * dt))
+      if (tip) b.sqAng = Math.atan2(p.y - tip.y, p.x - tip.x)
+    }
+
+    // 挤压：捏合且指尖靠近某个球时，球沿"指尖→球心"方向被压扁
+    for (const b of s.balloons) {
+      const p = project(b)
+      const d = tip ? Math.hypot(tip.x - p.x, tip.y - p.y) : 1e9
+      const near = clamp(1 - d / (p.r * 2.4), 0, 1)
+      const want = pinch && d < p.r * 1.9 ? near : 0
+      b.sq = lerp(b.sq || 0, want, 1 - Math.exp(-16 * dt))
+      if (tip) b.sqAng = Math.atan2(p.y - tip.y, p.x - tip.x)
+    }
+
     // 球：漂浮 + 边界回弹（世界坐标 ±0.95）
     for (const b of s.balloons) {
       b.seed += dt
@@ -236,8 +297,31 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     }
     s.particles = s.particles.filter((p) => p.life < p.ttl)
 
+    for (const sh of s.shards) {
+      sh.life += dt
+      sh.x += sh.vx * dt
+      sh.y += sh.vy * dt
+      sh.vy += 900 * dt
+      sh.vx *= Math.pow(0.2, dt)
+      sh.rot += sh.vr * dt
+    }
+    s.shards = s.shards.filter((sh) => sh.life < sh.ttl)
+
+    for (const sh of s.shards) {
+      sh.life += dt
+      sh.x += sh.vx * dt
+      sh.y += sh.vy * dt
+      sh.vy += 900 * dt
+      sh.vx *= Math.pow(0.2, dt)
+      sh.rot += sh.vr * dt
+    }
+    s.shards = s.shards.filter((sh) => sh.life < sh.ttl)
+
     for (const r of s.ripples) r.life += dt
     s.ripples = s.ripples.filter((r) => r.life < r.ttl)
+
+    for (const fl of s.flashes) fl.life += dt
+    s.flashes = s.flashes.filter((fl) => fl.life < fl.ttl)
 
     s.pan.x *= Math.pow(0.6, dt)
     s.pan.y *= Math.pow(0.6, dt)
@@ -285,44 +369,53 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
 
   function drawBalloon(b) {
     const p = project(b)
-    if (p.x < -p.r * 2 || p.x > size().w + p.r * 2) return
-    if (p.y < -p.r * 2 || p.y > size().h + p.r * 2) return
+    const { w, h } = size()
+    if (p.x < -p.r * 2.6 || p.x > w + p.r * 2.6) return
+    if (p.y < -p.r * 2.6 || p.y > h + p.r * 2.6) return
 
+    const sq = b.sq || 0
+    const r = p.r
     const h0 = b.hue
-    const grad = ctx.createRadialGradient(
-      p.x - p.r * 0.34,
-      p.y - p.r * 0.36,
-      p.r * 0.08,
-      p.x,
-      p.y,
-      p.r * 1.05,
-    )
-    grad.addColorStop(0, `hsl(${h0} 92% 76%)`)
-    grad.addColorStop(0.42, `hsl(${h0} 82% 58%)`)
-    grad.addColorStop(0.86, `hsl(${h0 + 8} 72% 38%)`)
-    grad.addColorStop(1, `hsl(${h0 + 12} 66% 28%)`)
 
+    // 球体：沿"指尖→球心"方向压扁，垂直方向鼓起
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    ctx.rotate(b.sqAng || 0)
+    ctx.scale(1 - 0.3 * sq, 1 + 0.28 * sq)
+    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.34, r * 0.06, 0, 0, r * 1.05)
+    grad.addColorStop(0, `hsl(${h0} 92% 78%)`)
+    grad.addColorStop(0.4, `hsl(${h0} 82% 58%)`)
+    grad.addColorStop(0.85, `hsl(${h0 + 8} 72% 38%)`)
+    grad.addColorStop(1, `hsl(${h0 + 12} 66% 26%)`)
     ctx.save()
     ctx.shadowColor = `hsla(${h0} 90% 30% / 0.55)`
     ctx.shadowBlur = 26 / b.z
     ctx.fillStyle = grad
     ctx.beginPath()
-    ctx.ellipse(p.x, p.y, p.r * 0.94, p.r, 0, 0, TAU)
+    ctx.arc(0, 0, r, 0, TAU)
     ctx.fill()
     ctx.restore()
+    ctx.restore()
 
-    // 高光
-    ctx.globalAlpha = 0.55
+    // 高光 / 嘴 / 打结都画在屏幕坐标系：光线方向不该跟着球转
+    ctx.globalAlpha = 0.5
     ctx.fillStyle = '#ffffff'
     ctx.beginPath()
-    ctx.ellipse(p.x - p.r * 0.33, p.y - p.r * 0.4, p.r * 0.2, p.r * 0.13, -0.6, 0, TAU)
+    ctx.ellipse(p.x - r * 0.31, p.y - r * 0.37, r * 0.19, r * 0.12, -0.6, 0, TAU)
     ctx.fill()
     ctx.globalAlpha = 1
 
-    // 暗色"嘴"缺口，让它像个活物
     ctx.fillStyle = `hsl(${h0 + 4} 62% 12% / 0.85)`
     ctx.beginPath()
-    ctx.ellipse(p.x + p.r * 0.2, p.y + p.r * 0.2, p.r * 0.22, p.r * 0.14, -0.5, 0, TAU)
+    ctx.ellipse(p.x + r * 0.2, p.y + r * 0.2, r * 0.19, r * 0.12, -0.5, 0, TAU)
+    ctx.fill()
+
+    ctx.fillStyle = `hsl(${h0 + 10} 70% 30%)`
+    ctx.beginPath()
+    ctx.moveTo(p.x - r * 0.05, p.y + r * 0.93)
+    ctx.lineTo(p.x + r * 0.19, p.y + r * 1.16)
+    ctx.lineTo(p.x + r * 0.22, p.y + r * 0.9)
+    ctx.closePath()
     ctx.fill()
   }
 
@@ -386,6 +479,18 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     const ordered = [...s.balloons].sort((a, b) => b.z - a.z)
     for (const b of ordered) drawBalloon(b)
 
+    for (const fl of s.flashes) {
+      const k = fl.life / fl.ttl
+      const g2 = ctx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, fl.r * (1 + k * 1.8))
+      g2.addColorStop(0, `rgba(255,255,255,${0.85 * (1 - k)})`)
+      g2.addColorStop(0.45, `hsla(${fl.hue} 100% 80% / ${0.5 * (1 - k)})`)
+      g2.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = g2
+      ctx.beginPath()
+      ctx.arc(fl.x, fl.y, fl.r * (1 + k * 1.8), 0, TAU)
+      ctx.fill()
+    }
+
     for (const r of s.ripples) {
       const k = r.life / r.ttl
       ctx.globalAlpha = (1 - k) * 0.8
@@ -404,6 +509,46 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.r * (0.5 + k * 0.9), 0, TAU)
       ctx.fill()
+    }
+    ctx.globalAlpha = 1
+
+    for (const sh of s.shards) {
+      const k = 1 - sh.life / sh.ttl
+      ctx.save()
+      ctx.globalAlpha = Math.max(0, k)
+      ctx.translate(sh.x, sh.y)
+      ctx.rotate(sh.rot)
+      ctx.fillStyle = `hsl(${sh.hue} 85% ${50 + k * 24}%)`
+      ctx.beginPath()
+      sh.pts.forEach(([px, py], i) => {
+        const X = px * sh.size
+        const Y = py * sh.size
+        if (i) ctx.lineTo(X, Y)
+        else ctx.moveTo(X, Y)
+      })
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
+    ctx.globalAlpha = 1
+
+    for (const sh of s.shards) {
+      const k = 1 - sh.life / sh.ttl
+      ctx.save()
+      ctx.globalAlpha = Math.max(0, k)
+      ctx.translate(sh.x, sh.y)
+      ctx.rotate(sh.rot)
+      ctx.fillStyle = `hsl(${sh.hue} 85% ${50 + k * 24}%)`
+      ctx.beginPath()
+      sh.pts.forEach(([px, py], i) => {
+        const X = px * sh.size
+        const Y = py * sh.size
+        if (i) ctx.lineTo(X, Y)
+        else ctx.moveTo(X, Y)
+      })
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
     }
     ctx.globalAlpha = 1
 
@@ -449,6 +594,7 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
   return {
     start() {
       resize()
+      sfx.ensure() // 必须在用户点击的调用栈里解锁 AudioContext
       running = true
       last = performance.now()
       raf = requestAnimationFrame(loop)

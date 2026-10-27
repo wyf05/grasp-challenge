@@ -389,7 +389,7 @@ export default function Sandbox({ onExit }) {
           </div>
 
           <div className="bloom-credit">
-            花开素材：{FLOWERS.map((f) => f.credit).join(' · ')}
+            花开素材取自参考原型（从录屏逆向提取的序列帧）
           </div>
         </>
       )}

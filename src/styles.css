@@ -2503,3 +2503,8 @@ button {
     rgba(255, 255, 255, 0) 92%
   );
 }
+
+/* 花朵页底色必须和素材裁片一致（#F5F3ED），否则裁片会露出方块边 */
+.sandbox--bloom {
+  background: #f5f3ed;
+}

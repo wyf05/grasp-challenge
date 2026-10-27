@@ -96,6 +96,13 @@ window.prepare = async (start, end, n, rect) => {
     if (b) rows.push({ t, area: b.area, box: [b.x0, b.y0, b.x1, b.y1] })
   }
   rows.sort((a, b) => a.area - b.area)          // 面积升序 = 花苞到盛开
+  // 去重：面积差太小的帧其实是同一个绽放阶段，留着只会让 scrub 时"卡一下"
+  const uniq = []
+  for (const r of rows) {
+    if (!uniq.length || r.area > uniq[uniq.length - 1].area * 1.005) uniq.push(r)
+  }
+  rows.length = 0
+  rows.push(...uniq)
   const union = rows.reduce(
     (u, r) => [
       Math.min(u[0], r.box[0]), Math.min(u[1], r.box[1]),
@@ -117,6 +124,9 @@ window.grab = async (t, box, outH) => {
   c.height = outH
   const ctx = c.getContext('2d')
   ctx.clearRect(0, 0, c.width, c.height)
+  // 不要在这里做对比度/饱和度。原来的做法套了 contrast(1.06)，
+  // 把接近纯白的页面底色 (#F5F3ED) 推成了亮白，贴回页面就露出一块矩形。
+  // 素材本来就是参考的效果，原样输出即可。
   ctx.drawImage(src, x0, y0, bw, bh, 0, 0, c.width, c.height)
   return { url: c.toDataURL('image/webp', 0.9), w: c.width, h: c.height }
 }
