@@ -1,14 +1,14 @@
 # 交接文档（HANDOFF）
 
 > 写给"新开一个对话"的接续者：读完这一份就能直接开工，不需要翻历史。
-> 最后更新：2026-10-27 20:20（P0 成绩卡已完成）
+> 最后更新：2026-10-27 23:20（P1 沙盒已完成）
 
 ---
 
 ## 0. 一句话现状
 
-参赛作品「**灵巧手抓取挑战 / DexKinetics**」已完成 **首页 + 游戏主体 + 手势实验室 + 摄像头模式 + 成绩卡（四维雷达 / 人格称号 / 1080×1440 分享图）**，可玩、可跑、双端适配。
-**剩余：隔空取物沙盒、发布上线、投稿物料。**
+参赛作品「**灵巧手抓取挑战 / DexKinetics**」已完成 **首页 + 游戏主体 + 手势实验室 + 摄像头模式 + 成绩卡（四维雷达 / 人格称号 / 1080×1440 分享图）+ 摄像头沙盒（捏气球 / 指尖生花）**，可玩、可跑、双端适配。
+**剩余：发布上线、投稿物料。**
 
 > 代码已纳入 git（基线 `387b3be`，P0 见 `e593b56`）。动 `engine.js` 之前先看 `git diff`。
 
@@ -28,6 +28,9 @@
 | `npm run build` | 产物在 `dist/` |
 | `node tools/shot.mjs <url> <out.png> [waitMs] [w] [h] [--act=js] [--eval=js]` | 无头截图 + 注入脚本 + 取回表达式结果（已内置虚拟摄像头参数） |
 | `node tools/vidsample.mjs` | 逐秒采样背景视频构图，用于测量画面内元素位置 |
+| `node tools/vidframes.mjs <视频> <out.png> [帧数] [列数] [帧宽] [起] [止]` | 用 Chrome 解码 + Canvas 拼帧（本机没有 ffmpeg）|
+| `node tools/keyframes.mjs <视频> <outDir> [帧数] [高度] [上移比例]` | 抠绿背景、取中心连通域、导出 webp 序列帧 |
+| `node tools/sheet.mjs <目录> <out.png> [列数] [格高]` | 把一堆图拼成接触表，看图挑素材用 |
 
 ## 2. 路由（hash 路由，`src/App.jsx`）
 
@@ -37,6 +40,7 @@
 | `#play` | 游戏页 | 抓取挑战主体，可玩 |
 | `#gesture` | 手势实验室 | 摄像头 + 21 点骨架 + 实时数值 + 5 张手势卡 |
 | `#lab` | 手部调参台 | 开发用，调机械手形态（`TUNING` 可视化） |
+| `#sandbox` | **摄像头沙盒** | 彩色的"另一个房间"：捏气球 / 指尖生花两个 tab，共用一次摄像头 |
 
 ## 3. 文件地图
 
@@ -52,7 +56,10 @@
 | `src/CalibDemo.jsx` | 校准示范动画 | 用同一只机械手做"张开/握拳"循环 |
 | `src/hand.js` | **机械手绘制** | 侧视双钳；`TUNING` 集中所有可调参数；`handTips()` 调试用 |
 | `src/HandLab.jsx` | 调参台 | 五档 g 并排 + 滑块 |
-| `src/styles.css` | 全部样式 | 极简黑白，胶囊组件，tabular-nums |
+| `src/Sandbox.jsx` | 沙盒页 | 两个 tab、摄像头生命周期、鼠标/触摸回退成"虚拟手指" |
+| `src/sandbox/purge.js` | 捏气球内核 | 纯 Canvas 2.5D（透视除法），球体/粒子/骨架/平移都在这里 |
+| `src/sandbox/bloom.js` | 指尖生花内核 | 开合度 → 帧序号，花朵序列帧 + 两层遮罩 |
+| `src/styles.css` | 全部样式 | 极简黑白，胶囊组件，tabular-nums；**末尾是沙盒的彩色分区** |
 | `public/mp/` | MediaPipe wasm（39MB，三档） | **发布前必须裁剪成单档 SIMD** |
 | `public/models/hand_landmarker.task` | 手部模型（7.5MB） | 本地加载，不依赖 Google CDN |
 
@@ -99,6 +106,11 @@ tolG(d) = d<=26 ? 0.032 : 0.055   // 容差（摄像头模式 ×1.8）
 10. **结算浮层比别的浮层高**（多了雷达和按钮）。375×667 下靠 `overflow-y:auto + margin:auto` 兜住，`max-height:700px` 那条媒体查询会把 tagline 藏掉——是有意的，别当成 bug 调回来。
 11. **Canvas 画中文前必须 `await document.fonts.load(...)`**。不等的话栅格化退回系统字，中英文基线会跳，导出的图和屏幕上看到的不一样。
 12. **SVG 雷达的标签要按轴分别定位**，不能统一加 `dy`：底部标签会掉出 `viewBox` 被裁掉（踩过）。
+13. **本机没有 ffmpeg**，拆帧和抠像都靠 Chrome（`tools/vidframes.mjs` / `keyframes.mjs`）。传参给的视频路径必须先 `fs.realpath` 转成绝对 `file://` URL，否则 webm 直接 `MEDIA_ERR_SRC_NOT_SUPPORTED`。
+14. **Chrome 里 `seeked` 早于画面真正上屏**。单帧提取要在 `seeked` 之后再等 ~120ms 再 `drawImage`，否则拿到全黑帧（拼多帧时反而不明显，所以很容易只在小批量时踩到）。
+15. **抠绿背景用 `greenness = G − max(R,B)`**，比 HSV 色相分割稳；再补一条"亮度低且不饱和就清掉"处理褐色木头；最后在降采样掩码上从画面中心做连通域，只留中心那朵。
+16. **别用包围盒最大值决定裁切尺寸**：总有几帧被背景杂物撑满，用最大值会把这些帧的尺寸套给整段序列，结果每帧都是整幅画面、花小得像米粒。改用**第一帧（花苞）中心 + 固定窗口**。
+17. **Canvas 遮罩半径要跟着"画出来的那张图"算**。按画布短边算，图比画布小时四周会留一道硬边；把花顶满屏幕又会把它裁成一个圆球——留白比例（`0.70`）比遮罩参数更关键。
 
 ## 6. 下一步（按优先级）
 
@@ -108,16 +120,28 @@ tolG(d) = d<=26 ? 0.032 : 0.055   // 容差（摄像头模式 ×1.8）
 - 力度基准 `5.0 / 2.6 g/s` 是估的，需要真人各跑几局校准，尤其摄像头模式
 - 称号目前 16 种组合，可以先跑几局看实际分布，太集中再加维度
 
-### P1 · 隔空取物沙盒（约 3h，用户已确认要做）
-- 复用 `camera.js`（掌心坐标、开合度）+ `GestureLab` 的骨架绘制
-- 物体在画面里漂浮，掌心靠近即吸附，握拳=抓住，张手=松开，甩手=抛出（简单速度继承）
-- 与游戏共用 `hand.js` 里的机械手？**不共用**——沙盒用真实摄像头画面，不画假手
+### P1 已完成 · 摄像头沙盒（2026-10-27）
+不是原计划的"隔空搬运"——用户提供录屏后**按参考原型复刻了两个玩法**：
+
+**① 捏气球 Stress Purge**（`#sandbox` 第一个 tab）
+- 紫色星空底 + 2.5D 气泡（透视除法 `x/z`，不引 Three.js）
+- 捏合（开合度 < 0.32）且指尖落在球内 → 爆；空处捏合拖拽 → 平移视角；松手 → 把手速甩给附近的球
+- 60 秒、三个 HUD（在场球数 / 倒计时，最后 10 秒变红 / 分数）、结算页 `STRESS PURGED`
+
+**② 指尖生花 Bloom**（第二个 tab）
+- 手的开合度**直接映射帧序号**：张开 → 往后拖 → 花开；握拳 → 收回花苞
+- 素材：Wikimedia Commons 两段开花延时（CC BY 3.0），已抠成透明序列帧放在 `public/bloom/`
+- 遮罩两层：径向收边（吃掉图片矩形边界）+ 上下线性渐隐（藏掉抠不干净的杂物）
+- 开满停 5 秒自动换下一朵
+
+**两个 tab 共用一次摄像头**；没开摄像头时鼠标/触摸当"虚拟手指"（`pointerRef`），这条路径也是自动化验证的入口。
 
 ### P2 · 发布与投稿（半天，硬截止 11/1 23:59）
 1. `npm run build` → 发布为在线链接（需 https，摄像头才可用）
 2. **裁剪 `public/mp/`**：只保留 `vision_wasm_internal.*`（SIMD）+ nosimd 兜底，能省 13MB
 3. 截图 3–5 张（首页 / 游戏进行中 / 结算 / 手势实验室）+ 30–45 秒录屏
 4. 投稿表：作品名、一句话简介、体验链接、截图、社媒链接
+5. **素材署名**：花朵序列帧是 CC BY 3.0，页面已在 `#sandbox` 底部放了 credit 行，投稿文案里也要带一句
 
 ## 7. 比赛规则备忘
 
@@ -139,6 +163,8 @@ tolG(d) = d<=26 ? 0.032 : 0.055   // 容差（摄像头模式 ×1.8）
 window.__game                 // 游戏实例：setAperture / setThumb / setHandNorm / finish / getState / render
 window.__classify(landmarks)  // 手势判定（21 个 {x,y} 归一化点），返回 {current, s, pinchGap}
 window.__scorecard            // 仅 DEV：{ buildProfile, renderShareCard, canvasToUrl }，不玩也能造数据出图
+window.__purge                // 仅 DEV：捏气球引擎（getState 拿到的是活引用，可直接改气球位置）
+window.__bloom                // 仅 DEV：花朵引擎（setOpenness / next）
 ```
 
 **造一局假数据验证成绩卡**（`tools/shot.mjs --act`）：
@@ -149,6 +175,16 @@ s.score = 1840; s.caught = 23; s.perfects = 9; s.maxCombo = 11; s.misses = 2
 s.stat.powerSamples = [2.2, 3.4, 1.8]; s.stat.gapSamples = [0.12, 0.4]
 s.stat.nerveSamples = [0.6]; s.stat.fragSeen = 6; s.stat.fragBroken = 1
 g.finish()   // 走完整的 onEnd → buildProfile → 结算页
+```
+
+**验证沙盒**（没有摄像头也能测，鼠标事件就是"虚拟手指"）：
+
+```js
+// 捏气球：把一个球挪到画面正中，再在中心 pointerdown
+const s = window.__purge.getState()
+s.balloons.forEach(b => { b.x = 5; b.y = 5 })
+s.balloons[0].x = 0; s.balloons[0].y = 0; s.balloons[0].z = 1
+// 然后对 .purge-canvas 中心派发 pointermove → pointerdown → pointerup
 ```
 
 ## 10. 可以删的临时物

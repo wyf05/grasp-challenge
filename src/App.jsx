@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import HandLab from './HandLab.jsx'
 import Game from './Game.jsx'
 import GestureLab from './GestureLab.jsx'
+import Sandbox from './Sandbox.jsx'
 
 const EASE = [0.16, 1, 0.3, 1]
 
@@ -70,6 +71,10 @@ export default function App() {
 
   if (hash === '#play') {
     return <Game onExit={() => { location.hash = '' }} />
+  }
+
+  if (hash === '#sandbox') {
+    return <Sandbox onExit={() => { location.hash = '' }} />
   }
 
   return (
@@ -176,6 +181,19 @@ export default function App() {
               How It Works
             </button>
           </motion.div>
+
+          <motion.button
+            type="button"
+            className="link-btn"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.15, duration: 0.6, ease: EASE }}
+            onClick={() => {
+              location.hash = '#sandbox'
+            }}
+          >
+            摄像头沙盒：捏气球 / 指尖生花 ↗
+          </motion.button>
         </div>
 
         <motion.div
