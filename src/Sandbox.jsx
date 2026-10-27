@@ -229,7 +229,7 @@ export default function Sandbox({ onExit }) {
                 <>
                   <h2>拇指碰到才炸。</h2>
                   <p>
-                    <b>捏住</b>（拇指和食指合上），再让指尖<b>碰到气球</b>。空处捏住拖动可以平移视角。
+                    <b>捏住</b>（拇指和食指合上），指尖<b>碰到气球就炸</b>。一次捏合只爆一个。
                   </p>
                   <p className="sandbox-sub">
                     {detected ? '已经看到你的手了。' : '把整只手放进画面，离镜头 40–60cm。'}
@@ -273,7 +273,7 @@ export default function Sandbox({ onExit }) {
       <div className="purge-foot">
         <span className="purge-chip">捏住 → 拇指碰到气球</span>
         <span className="purge-chip">{hud.combo > 0 ? '连击中' : '准备'}</span>
-        <span className="purge-hint">空处捏住拖动 = 平移视角</span>
+        <span className="purge-hint">一次捏合只爆一个，连爆连击更高</span>
       </div>
 
       <video ref={videoRef} className="cam-video is-hidden" playsInline muted />

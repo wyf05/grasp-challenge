@@ -83,8 +83,8 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
       x: rand(-0.9, 0.9),
       y: rand(-0.9, 0.9),
       z,
-      vx: rand(-0.05, 0.05),
-      vy: rand(-0.12, -0.04),
+      vx: rand(-0.3, 0.3),
+      vy: rand(-0.42, -0.16),
       r: 38,
       hue: HUES[(Math.random() * HUES.length) | 0],
       seed: Math.random() * TAU,
@@ -199,12 +199,24 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     if (tip) {
       if (pinch && !s.pinching) {
         s.grabAt = { ...tip, t: s.t }
-        // 捏空的瞬间若能碰到球，给一记很轻的"橡皮被捏"闷响
-        const near = s.balloons.some((b) => {
+        // 捏合的第一帧就做一次更宽松的判定（1.55r）：
+        // 用户说的是"一次捏不爆"，而捏合的过程只有 2–3 帧，窗口太窄就会漏
+        let first = null
+        for (const b of s.balloons) {
           const q = project(b)
-          return Math.hypot(tip.x - q.x, tip.y - q.y) < q.r * 1.6
-        })
-        if (near) sfx.squish()
+          if (Math.hypot(tip.x - q.x, tip.y - q.y) < q.r * 1.55) {
+            if (!first || b.z < first.z) first = b
+          }
+        }
+        if (first) {
+          pop(first, tip.x, tip.y)
+        } else {
+          const near = s.balloons.some((b) => {
+            const q = project(b)
+            return Math.hypot(tip.x - q.x, tip.y - q.y) < q.r * 2.2
+          })
+          if (near) sfx.squish()
+        }
       }
 
       if (pinch) {
@@ -212,22 +224,17 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
         let hit = null
         for (const b of s.balloons) {
           const p = project(b)
-          if (Math.hypot(tip.x - p.x, tip.y - p.y) < p.r * 0.92) {
+          // 1.25r：碰到球面甚至差一点点都算捏到，不用戳进球心
+          if (Math.hypot(tip.x - p.x, tip.y - p.y) < p.r * 1.25) {
             if (!hit || b.z < hit.b.z) hit = b
           }
         }
         if (hit) {
           pop(hit, tip.x, tip.y)
-        } else if (s.grabAt) {
-          const dx = tip.x - s.grabAt.x
-          const dy = tip.y - s.grabAt.y
-          const { w, h } = size()
-          s.pan.x += (dx / (w * 0.42)) * 0.55
-          s.pan.y += (dy / (h * 0.38)) * 0.55
-          s.pan.vx = dx / Math.max(dt, 1e-3)
-          s.pan.vy = dy / Math.max(dt, 1e-3)
-          s.grabAt = { ...tip, t: s.t }
         }
+        // 不再支持"捏住拖动平移视角"：页面跟着手走会让体验变差
+        s.pan.vx = 0
+        s.pan.vy = 0
       } else if (s.pinching) {
         // 刚松手：把手的速度甩给附近的球
         const sp = Math.hypot(s.pan.vx, s.pan.vy)
@@ -273,10 +280,10 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     // 球：漂浮 + 边界回弹（世界坐标 ±0.95）
     for (const b of s.balloons) {
       b.seed += dt
-      b.x += (b.vx + Math.sin(b.seed * 0.9) * 0.012) * dt
-      b.y += (b.vy + Math.cos(b.seed * 1.3) * 0.008) * dt
+      b.x += (b.vx + Math.sin(b.seed * 1.6) * 0.09) * dt
+      b.y += (b.vy + Math.cos(b.seed * 2.1) * 0.07) * dt
       // 轻微向中心回落的浮力，避免全飘出画面
-      b.y -= 0.035 * dt
+      b.y -= 0.018 * dt
       // 撞到"看得见的画面边缘"就反弹（不是固定的世界 ±0.95）
       const { w, h } = size()
       const kx = w * 0.46
@@ -292,8 +299,8 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
       if (b.x > xMax) { b.x = xMax; b.vx = -Math.abs(b.vx) * 0.85 }
       if (b.y < yMin) { b.y = yMin; b.vy = Math.abs(b.vy) * 0.85 }
       if (b.y > yMax) { b.y = yMax; b.vy = -Math.abs(b.vy) * 0.85 }
-      b.vx *= Math.pow(0.35, dt)
-      b.vy *= Math.pow(0.35, dt)
+      b.vx *= Math.pow(0.82, dt)
+      b.vy *= Math.pow(0.82, dt)
     }
 
     // 连击窗口：3 秒没爆就断
@@ -491,6 +498,9 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
   function draw() {
     const { w, h } = size()
     ctx.save()
+    if (s.shake > 0.4) {
+      ctx.translate(rand(-s.shake, s.shake) * 0.45, rand(-s.shake, s.shake) * 0.45)
+    }
     drawBackdrop()
 
     // 远的先画
