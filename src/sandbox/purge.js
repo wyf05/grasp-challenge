@@ -277,10 +277,21 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
       b.y += (b.vy + Math.cos(b.seed * 1.3) * 0.008) * dt
       // 轻微向中心回落的浮力，避免全飘出画面
       b.y -= 0.035 * dt
-      if (b.x < -0.95) { b.x = -0.95; b.vx = Math.abs(b.vx) }
-      if (b.x > 0.95) { b.x = 0.95; b.vx = -Math.abs(b.vx) }
-      if (b.y < -0.95) { b.y = -0.95; b.vy = Math.abs(b.vy) }
-      if (b.y > 0.95) { b.y = 0.95; b.vy = -Math.abs(b.vy) }
+      // 撞到"看得见的画面边缘"就反弹（不是固定的世界 ±0.95）
+      const { w, h } = size()
+      const kx = w * 0.46
+      const ky = h * 0.46 * 0.9
+      const rr = b.r / b.z
+      const halfX = ((w / 2 - rr) * b.z) / kx
+      const halfY = ((h / 2 - rr) * b.z) / ky
+      const xMin = -halfX - s.pan.x
+      const xMax = halfX - s.pan.x
+      const yMin = -halfY - s.pan.y
+      const yMax = halfY - s.pan.y
+      if (b.x < xMin) { b.x = xMin; b.vx = Math.abs(b.vx) * 0.85 }
+      if (b.x > xMax) { b.x = xMax; b.vx = -Math.abs(b.vx) * 0.85 }
+      if (b.y < yMin) { b.y = yMin; b.vy = Math.abs(b.vy) * 0.85 }
+      if (b.y > yMax) { b.y = yMax; b.vy = -Math.abs(b.vy) * 0.85 }
       b.vx *= Math.pow(0.35, dt)
       b.vy *= Math.pow(0.35, dt)
     }
@@ -455,24 +466,31 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
       }
     }
 
-    // 捏合时指尖收紧：画一圈提示
+    // 捏合时在"拇指-食指中点"画一圈：这才是真正夹住东西的位置
+    const c = { x: (pts[4].x + pts[8].x) / 2, y: (pts[4].y + pts[8].y) / 2 }
     if (hand.g < 0.32) {
-      const p = pts[4]
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)'
-      ctx.lineWidth = 1.4
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'
+      ctx.lineWidth = 1.6
       ctx.beginPath()
-      ctx.arc(p.x, p.y, 9 + Math.sin(s.t * 18) * 1.5, 0, TAU)
+      ctx.arc(c.x, c.y, 10 + Math.sin(s.t * 18) * 1.5, 0, TAU)
+      ctx.stroke()
+    } else {
+      ctx.strokeStyle = 'rgba(180,235,255,0.45)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(c.x, c.y, 6, 0, TAU)
       ctx.stroke()
     }
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, 2.2, 0, TAU)
+    ctx.fill()
     return w && h
   }
 
   function draw() {
     const { w, h } = size()
     ctx.save()
-    if (s.shake > 0.4) {
-      ctx.translate(rand(-s.shake, s.shake) * 0.4, rand(-s.shake, s.shake) * 0.4)
-    }
     drawBackdrop()
 
     // 远的先画
@@ -553,7 +571,25 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     ctx.globalAlpha = 1
 
     for (const hand of s.hands) {
-      if (hand.detected && hand.skeleton) drawHand(hand)
+      if (!hand.detected) continue
+      if (hand.skeleton) {
+        drawHand(hand)
+      } else {
+        // 鼠标/触摸没有骨架，画个准星代替
+        const c = toScreen(hand.tipX, hand.tipY)
+        const on = hand.g < 0.32
+        ctx.strokeStyle = on ? 'rgba(255,255,255,0.95)' : 'rgba(180,235,255,0.7)'
+        ctx.lineWidth = on ? 2 : 1.4
+        ctx.beginPath()
+        ctx.arc(c.x, c.y, on ? 13 : 9, 0, TAU)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(c.x - 4, c.y)
+        ctx.lineTo(c.x + 4, c.y)
+        ctx.moveTo(c.x, c.y - 4)
+        ctx.lineTo(c.x, c.y + 4)
+        ctx.stroke()
+      }
     }
 
     ctx.restore()
@@ -607,6 +643,7 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
     render() {
       resize()
       draw()
+      pushHud() // 开打之前也让 HUD 显示真实的在场球数，否则一直是 0
     },
     /** hands: [{detected, g, skeleton:[{x,y}], tipX, tipY}] 归一化且已镜像 */
     setHands(hands) {

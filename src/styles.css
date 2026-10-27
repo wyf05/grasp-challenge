@@ -2508,3 +2508,47 @@ button {
 .sandbox--bloom {
   background: #f5f3ed;
 }
+
+/* 捏气球页头部：单模块，没有 tab 了 */
+.sandbox-name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.sandbox-err {
+  font-size: 11px !important;
+  line-height: 1.6;
+  color: #c0392b !important;
+  word-break: break-all;
+}
+
+.cam-video.is-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 捏气球页头部：单模块，没有 tab 了 */
+.sandbox-name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.sandbox-err {
+  font-size: 11px !important;
+  line-height: 1.6;
+  color: #c0392b !important;
+  word-break: break-all;
+}
+
+.cam-video.is-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

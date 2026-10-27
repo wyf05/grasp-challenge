@@ -42,7 +42,7 @@
 | `#play` | 游戏页 | 抓取挑战主体，可玩 |
 | `#gesture` | 手势实验室 | 摄像头 + 21 点骨架 + 实时数值 + 5 张手势卡 |
 | `#lab` | 手部调参台 | 开发用，调机械手形态（`TUNING` 可视化） |
-| `#sandbox` | **摄像头沙盒** | 彩色的"另一个房间"：捏气球 / 指尖生花两个 tab，共用一次摄像头 |
+| `#sandbox` | **捏气球** | 彩色单模块。深色页 + 圆角紫卡片，60 秒捏气球 |
 
 ## 3. 文件地图
 
@@ -59,12 +59,17 @@
 | `src/CalibDemo.jsx` | 校准示范动画 | 用同一只机械手做"张开/握拳"循环 |
 | `src/hand.js` | **机械手绘制** | 侧视双钳；`TUNING` 集中所有可调参数；`handTips()` 调试用 |
 | `src/HandLab.jsx` | 调参台 | 五档 g 并排 + 滑块 |
-| `src/Sandbox.jsx` | 沙盒页 | 两个 tab、摄像头生命周期、鼠标/触摸回退成"虚拟手指" |
+| `src/Sandbox.jsx` | 捏气球页 | 进页面先问是否开摄像头、摄像头生命周期、鼠标/触摸回退成"虚拟手指" |
 | `src/sandbox/purge.js` | 捏气球内核（**待重写**）| 现在是 Canvas 2.5D，参考原型是 Three.js 真 3D；差距清单见 `SANDBOX-SPEC.md` §3.6 |
-| `src/sandbox/bloom.js` | 指尖生花内核 | 开合度 → 帧序号，花朵序列帧 + 两层遮罩 |
+
 | `src/styles.css` | 全部样式 | 极简黑白，胶囊组件，tabular-nums；**末尾是沙盒的彩色分区** |
 | `public/mp/` | MediaPipe wasm（39MB，三档） | **发布前必须裁剪成单档 SIMD** |
 | `public/models/hand_landmarker.task` | 手部模型（7.5MB） | 本地加载，不依赖 Google CDN |
+
+### 沙盒现状（2026-10-27 23:20 调整）
+- **"指尖生花"已移除**（用户判定观感不行），`src/sandbox/bloom.js` 与 `public/flora/` 一并删掉。
+- 捏气球改动：取消画面抖动（整块画布位移会让用户觉得页面在动）→ 改成气球撞可见边界反弹；进入页面先问是否打开摄像头；判定点从食指尖改成**拇指尖与食指尖的中点**（实测真正的操作是"捏住 + 拇指碰到球"）；鼠标模式补了准星。
+- 音效在 `src/sandbox/sfx.js`（WebAudio 合成，无音频文件）。
 
 ### 首页与引导（2026-10-27 晚重做）
 - 原来导航上的 `Menu` 和 `Adaptive Grip` 是**空按钮**（点了没反应），已删除；未使用的 `.pill` / `.chip` / `.buttons` / `.footer-right` 样式还留在 CSS 里，没清。
