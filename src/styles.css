@@ -2492,3 +2492,14 @@ button {
   margin: -4px 0 6px;
   line-height: 1.6;
 }
+
+/* 渐变之前压得太白，桌面端把背景那只机械手整个糊掉了；卡片已是实底，这里只留够读字的量 */
+.footer--home {
+  background: linear-gradient(
+    to top,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.97) 26%,
+    rgba(255, 255, 255, 0.72) 58%,
+    rgba(255, 255, 255, 0) 92%
+  );
+}
