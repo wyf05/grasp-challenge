@@ -107,10 +107,13 @@ export function createBloom({ canvas, onHud }) {
     const y = (h - dh) / 2
 
     const mctx = mask.getContext('2d')
+    // 抠像会把花瓣压灰一点，这里把饱和度和对比度补回来
+    mctx.filter = 'saturate(1.22) contrast(1.08)'
     const dpr = Math.min(2, window.devicePixelRatio || 1)
     mctx.setTransform(1, 0, 0, 1, 0, 0)
     mctx.clearRect(0, 0, mask.width, mask.height)
     mctx.drawImage(pic, x * dpr, y * dpr, dw * dpr, dh * dpr)
+    mctx.filter = 'none'
 
     // 柔边遮罩：中心全保留，外圈渐隐到全透明
     // 遮罩半径跟着"画出来的图"走，保证图片自身的矩形边界一定被吃掉；
