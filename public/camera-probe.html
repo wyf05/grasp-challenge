@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Camera Probe · 手部识别可行性验证</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: #fff;
+        color: #0a0a0a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100dvh;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
+      .brand small { font-weight: 400; color: rgba(0, 0, 0, 0.45); font-size: 12px; }
+      .pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 7px 14px; border-radius: 999px; background: #f4f4f6;
+        font-size: 11px; color: rgba(0, 0, 0, 0.55);
+      }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: #b8b8be; }
+      .dot.on { background: #0a0a0a; }
+      .dot.bad { background: #e5484d; }
+
+      main { display: flex; flex-direction: column; gap: 20px; padding: 20px 24px 32px; }
+      @media (min-width: 900px) { main { flex-direction: row; align-items: flex-start; gap: 28px; } }
+
+      .stage {
+        position: relative;
+        flex: 1 1 auto;
+        min-width: 0;
+        aspect-ratio: 16 / 10;
+        background: #f4f4f6;
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .stage video, .stage canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .stage video { transform: scaleX(-1); }
+      .overlay-msg {
+        position: absolute; inset: 0; display: grid; place-items: center;
+        text-align: center; padding: 24px; font-size: 13px; color: rgba(0, 0, 0, 0.5);
+        background: rgba(255, 255, 255, 0.92);
+      }
+      .overlay-msg b { display: block; font-size: 15px; color: #0a0a0a; margin-bottom: 8px; font-weight: 500; }
+
+      .panel { flex: none; width: 100%; display: flex; flex-direction: column; gap: 16px; }
+      @media (min-width: 900px) { .panel { width: 360px; } }
+
+      .big { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+      .big span { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(0, 0, 0, 0.45); }
+      .big b {
+        font-size: 44px; font-weight: 300; letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums; line-height: 1;
+      }
+      .bar { height: 6px; border-radius: 999px; background: #f0f0f2; overflow: hidden; }
+      .bar i { display: block; height: 100%; width: 0%; background: #0a0a0a; border-radius: 999px; transition: width 0.05s linear; }
+
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: rgba(0, 0, 0, 0.08); border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 12px; overflow: hidden; }
+      .cell { background: #fff; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+      .cell span { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(0, 0, 0, 0.42); }
+      .cell b { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+      .row { display: flex; gap: 8px; flex-wrap: wrap; }
+      button {
+        font-family: inherit; cursor: pointer; border-radius: 999px; font-size: 13px;
+        padding: 12px 20px; border: 1px solid #0a0a0a; background: #0a0a0a; color: #fff;
+        transition: opacity 0.2s ease;
+      }
+      button.ghost { background: #fff; color: #0a0a0a; border-color: rgba(0, 0, 0, 0.28); }
+      button:disabled { opacity: 0.35; cursor: not-allowed; }
+      button:not(:disabled):hover { opacity: 0.82; }
+
+      .slider { display: flex; flex-direction: column; gap: 6px; }
+      .slider label { font-size: 11px; color: rgba(0, 0, 0, 0.5); display: flex; justify-content: space-between; }
+      input[type='range'] { width: 100%; accent-color: #0a0a0a; }
+
+      .note { font-size: 12px; line-height: 1.6; color: rgba(0, 0, 0, 0.45); }
+      .calib { font-size: 12px; color: rgba(0, 0, 0, 0.6); font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">DexKinetics <small>· Camera Probe</small></div>
+      <div class="pill"><span class="dot" id="statusDot"></span><span id="status">待启动</span></div>
+    </header>
+
+    <main>
+      <div class="stage">
+        <video id="video" playsinline muted autoplay></video>
+        <canvas id="canvas"></canvas>
+        <div class="overlay-msg" id="overlay">
+          <div>
+            <b>点击下方按钮开始</b>
+            需要允许摄像头权限。手抬到胸前、正对镜头，光线充足效果最好。
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div>
+          <div class="big"><span>aperture g</span><b id="gVal">—</b></div>
+          <div class="bar" style="margin-top: 10px"><i id="gBar"></i></div>
+        </div>
+
+        <div class="grid">
+          <div class="cell"><span>raw ratio</span><b id="raw">—</b></div>
+          <div class="cell"><span>speed dg/dt</span><b id="speed">—</b></div>
+          <div class="cell"><span>fps</span><b id="fps">—</b></div>
+          <div class="cell"><span>infer ms</span><b id="ms">—</b></div>
+          <div class="cell"><span>jitter σ</span><b id="jitter">—</b></div>
+          <div class="cell"><span>thumb t</span><b id="thumb">—</b></div>
+        </div>
+
+        <div class="row">
+          <button id="startBtn">Enable Camera</button>
+          <button id="calibBtn" class="ghost" disabled>校准开合范围</button>
+        </div>
+
+        <div class="slider">
+          <label><span>平滑强度（EMA alpha）</span><span id="alphaVal">0.35</span></label>
+          <input id="alpha" type="range" min="0.05" max="0.9" step="0.05" value="0.35" />
+        </div>
+
+        <div class="calib" id="calib">未校准：按 0.35 → 1.90 的默认比例映射</div>
+
+        <p class="note">
+          校准方法：点「校准开合范围」后 3 秒内先完全张开手掌，再握紧拳头。程序会记录实测的最小/最大比值，
+          之后 g 的 0→1 就按你的手标定。<br />
+          jitter σ 是「手保持不动时 g 的波动」，这个数直接决定游戏判定窗口要放宽多少。
+        </p>
+      </aside>
+    </main>
+
+    <script type="module">
+      const video = document.getElementById('video')
+      const canvas = document.getElementById('canvas')
+      const ctx = canvas.getContext('2d')
+      const overlay = document.getElementById('overlay')
+      const statusEl = document.getElementById('status')
+      const statusDot = document.getElementById('statusDot')
+
+      const el = (id) => document.getElementById(id)
+      const gVal = el('gVal'), gBar = el('gBar'), rawEl = el('raw'), speedEl = el('speed')
+      const fpsEl = el('fps'), msEl = el('ms'), jitterEl = el('jitter'), thumbEl = el('thumb')
+      const calibEl = el('calib')
+
+      const CONNECTIONS = [
+        [0, 1], [1, 2], [2, 3], [3, 4],
+        [0, 5], [5, 6], [6, 7], [7, 8],
+        [5, 9], [9, 10], [10, 11], [11, 12],
+        [9, 13], [13, 14], [14, 15], [15, 16],
+        [13, 17], [17, 18], [18, 19], [19, 20],
+        [0, 17],
+      ]
+
+      let landmarker = null
+      let running = false
+      let lastVideoTime = -1
+      let gSmooth = null
+      let gRaw = 0
+      let loRatio = 0.35
+      let hiRatio = 1.9
+      let alpha = 0.35
+
+      let frameCount = 0
+      let fpsTimer = performance.now()
+      let inferMs = 0
+      const hist = []
+      let prevG = null
+      let prevT = 0
+      let calibrating = false
+      let calibMin = Infinity
+      let calibMax = 0
+
+      const setStatus = (text, state = '') => {
+        statusEl.textContent = text
+        statusDot.className = 'dot' + (state ? ' ' + state : '')
+      }
+
+      // 关键点坐标是「按画面宽高归一化」的，x/y 尺度不同，
+      // 必须先乘回像素尺寸再算距离，否则会随画面宽高比失真
+      const toPixels = (lm, w, h) => lm.map((p) => ({ x: p.x * w, y: p.y * h }))
+
+      const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+
+      async function initModel() {
+        setStatus('加载模型…')
+        const { FilesetResolver, HandLandmarker } = await import('/mp/vision_bundle.mjs')
+        const fileset = await FilesetResolver.forVisionTasks('/mp/wasm')
+        landmarker = await HandLandmarker.createFromOptions(fileset, {
+          baseOptions: {
+            modelAssetPath: '/models/hand_landmarker.task',
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 1,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        })
+      }
+
+      async function startCamera() {
+        el('startBtn').disabled = true
+        try {
+          if (!landmarker) await initModel()
+          setStatus('请求摄像头…')
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+            audio: false,
+          })
+          video.srcObject = stream
+          await video.play()
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          overlay.style.display = 'none'
+          el('calibBtn').disabled = false
+          running = true
+          setStatus('识别中', 'on')
+          requestAnimationFrame(loop)
+        } catch (err) {
+          el('startBtn').disabled = false
+          setStatus('启动失败', 'bad')
+          overlay.style.display = 'grid'
+          overlay.innerHTML =
+            '<div><b>无法启动</b>' + (err && err.message ? err.message : String(err)) + '</div>'
+          console.error(err)
+        }
+      }
+
+      function loop() {
+        if (!running) return
+        if (video.currentTime !== lastVideoTime) {
+          lastVideoTime = video.currentTime
+          const t0 = performance.now()
+          const res = landmarker.detectForVideo(video, performance.now())
+          inferMs = performance.now() - t0
+          handleResult(res)
+        }
+        requestAnimationFrame(loop)
+      }
+
+      function handleResult(res) {
+        const w = canvas.width
+        const h = canvas.height
+        ctx.clearRect(0, 0, w, h)
+
+        frameCount++
+        const now = performance.now()
+        if (now - fpsTimer > 500) {
+          fpsEl.textContent = Math.round((frameCount * 1000) / (now - fpsTimer))
+          frameCount = 0
+          fpsTimer = now
+        }
+        msEl.textContent = inferMs.toFixed(1)
+
+        if (!res.landmarks || res.landmarks.length === 0) {
+          setStatus('没检测到手', '')
+          gVal.textContent = '—'
+          return
+        }
+        setStatus('识别中', 'on')
+
+        const lm = toPixels(res.landmarks[0], w, h)
+
+        // ---- 画骨架（视频被 CSS 镜像，x 同步翻转）----
+        const mx = (p) => w - p.x
+        ctx.lineWidth = Math.max(2, w / 500)
+        ctx.strokeStyle = 'rgba(10,10,10,0.55)'
+        for (const [a, b] of CONNECTIONS) {
+          ctx.beginPath()
+          ctx.moveTo(mx(lm[a]), lm[a].y)
+          ctx.lineTo(mx(lm[b]), lm[b].y)
+          ctx.stroke()
+        }
+        for (let i = 0; i < lm.length; i++) {
+          const isTip = [4, 8, 12, 16, 20].includes(i)
+          ctx.beginPath()
+          ctx.arc(mx(lm[i]), lm[i].y, isTip ? w / 110 : w / 200, 0, Math.PI * 2)
+          ctx.fillStyle = isTip ? '#0A0A0A' : 'rgba(10,10,10,0.35)'
+          ctx.fill()
+        }
+
+        // ---- 开合度：拇指尖-食指尖 ÷ 掌宽（5→17），尺度无关 ----
+        const palmW = dist(lm[5], lm[17])
+        const span = dist(lm[4], lm[8])
+        const ratio = palmW > 0 ? span / palmW : 0
+        gRaw = Math.min(1, Math.max(0, (ratio - loRatio) / (hiRatio - loRatio)))
+
+        gSmooth = gSmooth === null ? gRaw : gSmooth + alpha * (gRaw - gSmooth)
+
+        // ---- 闭合速度 dg/dt ----
+        const now2 = performance.now()
+        let speed = 0
+        if (prevG !== null && now2 - prevT > 0) speed = (gSmooth - prevG) / ((now2 - prevT) / 1000)
+        prevG = gSmooth
+        prevT = now2
+
+        // ---- 拇指独立轴：拇指 2-3-4 夹角，越小越弯 ----
+        const a1 = Math.atan2(lm[2].y - lm[3].y, lm[2].x - lm[3].x)
+        const a2 = Math.atan2(lm[4].y - lm[3].y, lm[4].x - lm[3].x)
+        let ang = Math.abs(a1 - a2)
+        if (ang > Math.PI) ang = Math.PI * 2 - ang
+        const thumbT = Math.min(1, Math.max(0, 1 - ang / Math.PI))
+
+        // ---- 抖动统计 ----
+        hist.push(gSmooth)
+        if (hist.length > 90) hist.shift()
+        if (hist.length > 30) {
+          const mean = hist.reduce((s, v) => s + v, 0) / hist.length
+          const varr = hist.reduce((s, v) => s + (v - mean) ** 2, 0) / hist.length
+          jitterEl.textContent = Math.sqrt(varr).toFixed(3)
+        }
+
+        if (calibrating) {
+          calibMin = Math.min(calibMin, ratio)
+          calibMax = Math.max(calibMax, ratio)
+        }
+
+        gVal.textContent = gSmooth.toFixed(2)
+        gBar.style.width = (gSmooth * 100).toFixed(1) + '%'
+        rawEl.textContent = ratio.toFixed(2)
+        speedEl.textContent = speed.toFixed(2)
+        thumbEl.textContent = thumbT.toFixed(2)
+      }
+
+      el('alpha').addEventListener('input', (e) => {
+        alpha = Number(e.target.value)
+        el('alphaVal').textContent = alpha.toFixed(2)
+      })
+
+      el('startBtn').addEventListener('click', startCamera)
+
+      // 便于自动化烟测：?auto=1 时免点击直接启动
+      if (new URLSearchParams(location.search).has('auto')) {
+        window.addEventListener('load', () => setTimeout(startCamera, 300))
+      }
+
+      // 无摄像头的环境下验证「引擎 + 模型」是否能跑通
+      if (new URLSearchParams(location.search).has('selftest')) {
+        window.addEventListener('load', async () => {
+          try {
+            await initModel()
+            const c = document.createElement('canvas')
+            c.width = 640
+            c.height = 480
+            const g = c.getContext('2d')
+            g.fillStyle = '#f4f4f6'
+            g.fillRect(0, 0, 640, 480)
+            g.fillStyle = '#111'
+            g.fillRect(240, 160, 160, 200)
+            await landmarker.setOptions({ runningMode: 'IMAGE' })
+            const t0 = performance.now()
+            const r = landmarker.detect(c)
+            const dt = performance.now() - t0
+            setStatus('引擎可用', 'on')
+            overlay.innerHTML =
+              '<div><b>引擎与模型加载成功</b>推理 ' +
+              dt.toFixed(0) +
+              ' ms · 检出 ' +
+              r.landmarks.length +
+              ' 只手（测试图为色块，期望 0）</div>'
+          } catch (e) {
+            setStatus('引擎异常', 'bad')
+            overlay.innerHTML = '<div><b>加载失败</b>' + String(e) + '</div>'
+          }
+        })
+      }
+
+      el('calibBtn').addEventListener('click', () => {
+        calibrating = true
+        calibMin = Infinity
+        calibMax = 0
+        let left = 3
+        el('calibBtn').disabled = true
+        calibEl.textContent = '校准中：先把手完全张开…'
+        const timer = setInterval(() => {
+          left -= 1
+          if (left > 0) {
+            calibEl.textContent = left >= 2 ? '校准中：张开手掌…' : '校准中：现在握紧拳头…'
+          } else {
+            clearInterval(timer)
+            calibrating = false
+            el('calibBtn').disabled = false
+            if (calibMax > calibMin + 0.15) {
+              loRatio = calibMin
+              hiRatio = calibMax
+              calibEl.textContent =
+                '已校准：' + loRatio.toFixed(2) + ' → ' + hiRatio.toFixed(2) + '（比值越界会被截断）'
+            } else {
+              calibEl.textContent = '校准失败：动作幅度太小，请重试'
+            }
+          }
+        }, 1000)
+      })
+    </script>
+  </body>
+</html>
