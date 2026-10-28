@@ -19,6 +19,9 @@ const actArg = rest.find((a) => a.startsWith('--act='))
 const act = actArg ? actArg.slice(6) : null
 const evalArg = rest.find((a) => a.startsWith('--eval='))
 const evalExpr = evalArg ? evalArg.slice(7) : null
+const scaleArg = rest.find((a) => a.startsWith('--scale='))
+// 投稿用的图要更清晰：布局不变，只把像素密度翻倍
+const scale = Number(scaleArg ? scaleArg.slice(8) : 1) || 1
 
 const browser = await puppeteer.launch({
   executablePath: CHROME,
@@ -30,7 +33,7 @@ const browser = await puppeteer.launch({
     '--use-fake-ui-for-media-stream',
     '--use-fake-device-for-media-stream',
   ],
-  defaultViewport: { width, height, deviceScaleFactor: 1 },
+  defaultViewport: { width, height, deviceScaleFactor: scale },
 })
 
 const page = await browser.newPage()

@@ -355,6 +355,7 @@ export function createPurge({ canvas, onHud, onEnd, duration = 60 }) {
       onHud?.({
         time: Math.max(0, s.duration - s.t),
         score: s.score,
+        popped: s.popped,
         active: s.balloons.length,
         combo: s.combo,
         pinching: s.pinching,

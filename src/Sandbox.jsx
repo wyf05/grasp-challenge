@@ -177,7 +177,7 @@ export default function Sandbox({ onExit }) {
         </div>
         <div className="purge-stat purge-stat--right">
           <span className="purge-label">已捏爆</span>
-          <b>{hud.score}</b>
+          <b>{hud.popped ?? 0}</b>
         </div>
       </div>
 
